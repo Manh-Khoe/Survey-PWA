@@ -1,7 +1,7 @@
 // ==========================================
 // --- CẤU HÌNH HỆ THỐNG ---
 // ==========================================
-const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzrv-Vd0AGeh-PjmBdEaPynOnOERPv0QYx951VlaBqW-GXxJ3N7BviRHeZp8u9vmuUz/exec";
+const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxpFdt4m00x3yIp-dfWqiKwGzyPyFgzfAyX4EWwQGU4PbEbU2sx5dcxwAwE4_SUQCdr/exec";
 
 // Tự động điền Webhook URL vào ô cài đặt khi load trang
 document.addEventListener('DOMContentLoaded', () => {
