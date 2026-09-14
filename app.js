@@ -205,7 +205,7 @@ document.getElementById('interview-form').addEventListener('submit', async (e) =
         location: document.getElementById('location-input').value,
         photos: photosBase64, 
         timestamp: new Date().toLocaleString('vi-VN'),
-        status: 'pending' // Mặc định là chờ đồng bộ
+        status: 'pending' 
     };
 
     const db = await dbPromise;
@@ -213,28 +213,37 @@ document.getElementById('interview-form').addEventListener('submit', async (e) =
     if (navigator.onLine && document.getElementById('webhook-url').value) {
         try {
             await sendToGoogleSheets(data);
-            data.status = 'synced'; // Đồng bộ thành công
+            data.status = 'synced'; 
             alert("✅ Đã lưu và đồng bộ trực tiếp lên Google Sheets!");
         } catch (error) {
-            alert("⚠️ Mạng chập chờn. Dữ liệu đã được lưu offline!");
+            alert("⚠️ Lỗi mạng. Dữ liệu đã được lưu offline!");
         }
     } else {
         alert("💾 Đang Offline. Dữ liệu đã được lưu vào bộ nhớ máy!");
     }
 
+    // 1. Lưu vào DB
     await db.add('sessions', data);
     
-    // Yêu cầu quyền thông báo nếu chưa có
-    if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        Notification.requestPermission();
-    }
-    
-    e.target.reset();
+    // 2. Xóa trắng form thủ công để chống kẹt lỗi
+    document.getElementById('interview-form').reset();
+    document.getElementById('location-input').value = '';
     photosBase64 = [];
     renderPhotoGallery();
-    loadHistory();
+    loadHistory(); // Cập nhật lại list lịch sử
+
+    // 3. Xử lý thông báo (bọc trong try-catch để không bị crash nếu thiết bị chặn)
+    try {
+        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            Notification.requestPermission();
+        }
+    } catch (err) { console.log("Thông báo bị chặn", err); }
 });
 
+
+// ==========================================
+// --- LOAD LỊCH SỬ VÀ XEM CHI TIẾT (MODAL) ---
+// ==========================================
 async function loadHistory() {
     const db = await dbPromise;
     const sessions = await db.getAll('sessions');
@@ -248,34 +257,75 @@ async function loadHistory() {
     container.innerHTML = '';
     
     sessions.reverse().forEach(session => {
-        let photosHtml = '';
+        // Lấy 1 ảnh đầu tiên làm thumbnail nhỏ (nếu có)
+        let thumbHtml = '';
         if (session.photos && session.photos.length > 0) {
-            photosHtml = `<div class="mt-3 grid grid-cols-3 gap-2">`;
-            session.photos.forEach(imgData => {
-                photosHtml += `<img src="${imgData}" class="aspect-square w-full object-cover rounded-lg border border-slate-200 shadow-sm">`;
-            });
-            photosHtml += `</div>`;
+            thumbHtml = `<img src="${session.photos[0]}" class="mt-2 h-16 w-16 object-cover rounded-lg border border-slate-200">`;
         }
 
         const statusLabel = session.status === 'synced' 
-            ? `<span class="absolute top-4 right-4 text-[9px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded-md uppercase tracking-wide border border-green-200">Đã đồng bộ ✓</span>`
-            : `<span class="absolute top-4 right-4 text-[9px] font-bold bg-orange-100 text-orange-700 px-2 py-1 rounded-md uppercase tracking-wide border border-orange-200">Chờ đồng bộ ⏳</span>`;
+            ? `<span class="absolute top-3 right-3 text-[9px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded">Đồng bộ ✓</span>`
+            : `<span class="absolute top-3 right-3 text-[9px] font-bold bg-orange-100 text-orange-700 px-2 py-1 rounded">Chờ ⏳</span>`;
 
+        // Thêm sự kiện onclick để mở Modal, và lớp cursor-pointer
         container.innerHTML += `
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm relative mb-3">
-                <div class="flex justify-between items-start mb-2">
-                    <h3 class="font-bold text-blue-700 text-sm pr-20">${session.topic}</h3>
-                    ${statusLabel}
-                </div>
-                <p class="text-xs text-slate-600 mb-1"><b>Người hỏi:</b> ${session.interviewer} &nbsp;|&nbsp; <b>Người đáp:</b> ${session.interviewee}</p>
-                <p class="text-xs text-slate-600 mb-1"><b>Phân loại:</b> ${session.type}</p>
-                <p class="text-xs text-slate-600 mb-2 whitespace-pre-wrap"><b>Nội dung:</b> ${session.content}</p>
-                <p class="text-[10px] text-slate-400 font-medium">📍 ${session.location || 'Chưa lấy GPS'} <br> 🕒 ${session.timestamp}</p>
-                ${photosHtml}
+            <div onclick="openModal(${session.id})" class="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm relative mb-3 cursor-pointer hover:bg-slate-100 active:scale-[0.98] transition-all">
+                <h3 class="font-bold text-blue-700 text-sm pr-16 truncate">${session.topic}</h3>
+                ${statusLabel}
+                <p class="text-xs text-slate-600 mt-1"><b>Chủ đề:</b> ${session.type}</p>
+                <p class="text-xs text-slate-500 mt-1 truncate"><b>Nội dung:</b> ${session.content}</p>
+                ${thumbHtml}
+                <p class="text-[10px] text-slate-400 font-medium mt-2">🕒 ${session.timestamp}</p>
             </div>
         `;
     });
 }
+
+// Logic mở popup chi tiết
+window.openModal = async function(id) {
+    const db = await dbPromise;
+    const session = await db.get('sessions', id);
+    if (!session) return;
+
+    // Load tất cả các ảnh vào dạng lưới lớn
+    let photosHtml = '';
+    if (session.photos && session.photos.length > 0) {
+        photosHtml = `<div class="grid grid-cols-1 gap-3 mt-4 pt-4 border-t">`;
+        session.photos.forEach(img => {
+            photosHtml += `<img src="${img}" class="w-full object-contain rounded-lg border border-slate-200 shadow-sm">`;
+        });
+        photosHtml += `</div>`;
+    }
+
+    // Nhồi dữ liệu vào Modal
+    document.getElementById('modal-content').innerHTML = `
+        <p><b>Người hỏi:</b> ${session.interviewer}</p>
+        <p><b>Người đáp:</b> ${session.interviewee}</p>
+        <p><b>Phân loại:</b> <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">${session.type}</span></p>
+        <p><b>Chủ đề:</b> ${session.topic}</p>
+        <div class="bg-slate-100 p-3 rounded-lg my-2 whitespace-pre-wrap">${session.content}</div>
+        <p class="text-xs text-slate-500">📍 ${session.location || 'Chưa lấy GPS'}</p>
+        <p class="text-xs text-slate-500">🕒 ${session.timestamp}</p>
+        ${photosHtml}
+    `;
+
+    // Hiển thị Modal
+    const modal = document.getElementById('detail-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    // Delay nhỏ để CSS transition opacity hoạt động
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+};
+
+// Logic đóng popup
+window.closeModal = function() {
+    const modal = document.getElementById('detail-modal');
+    modal.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }, 300); // Đợi CSS transition mờ đi xong thì mới ẩn hẳn
+};
 
 // ==========================================
 // --- CÀI ĐẶT ---
