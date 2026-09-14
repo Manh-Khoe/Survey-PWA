@@ -1,7 +1,7 @@
 // ==========================================
 // --- CẤU HÌNH HỆ THỐNG ---
 // ==========================================
-const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwkkbtF3V_NpYZJ74ka3S272Xs9izEsE_7LJWxTNlHpA0EX9QkrL_lrKrKCLOrigYJQ/exec";
+const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzrv-Vd0AGeh-PjmBdEaPynOnOERPv0QYx951VlaBqW-GXxJ3N7BviRHeZp8u9vmuUz/exec";
 
 // Tự động điền Webhook URL vào ô cài đặt khi load trang
 document.addEventListener('DOMContentLoaded', () => {
@@ -146,14 +146,13 @@ async function sendToGoogleSheets(data) {
     const webhookUrl = document.getElementById('webhook-url').value;
     if (!webhookUrl) throw new Error("Chưa có Webhook URL");
 
-    // Lọc bỏ base64 ảnh trước khi gửi để tránh đầy bộ nhớ Sheet (ảnh vẫn giữ ở local)
+    // Lần này chúng ta KHÔNG xóa data.photos nữa, gửi nguyên cả mảng ảnh (Base64) lên server
     const payload = { ...data };
-    delete payload.photos; 
 
     try {
         await fetch(webhookUrl, {
             method: 'POST',
-            mode: 'no-cors', // Sử dụng no-cors để tránh lỗi Preflight với Google Apps Script
+            mode: 'no-cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(payload)
         });
