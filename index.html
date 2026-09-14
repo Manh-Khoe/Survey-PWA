@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VKU Survey PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 flex justify-center items-center h-screen">
+
+    <div class="w-full max-w-md h-full bg-white flex flex-col relative overflow-hidden shadow-2xl">
+
+        <!-- Header -->
+        <header class="bg-white px-5 py-4 flex justify-between items-center z-10 border-b border-slate-100">
+            <h1 id="header-title" class="text-xl font-extrabold text-slate-800 tracking-tight">Điều Tra Hiện Trường</h1>
+            <span id="network-status"
+                class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-100 text-emerald-700">Online</span>
+        </header>
+
+        <!-- NỘI DUNG -->
+        <main class="flex-1 overflow-y-auto no-scrollbar pb-24 p-5">
+
+            <!-- TAB 1: PHIÊN MỚI -->
+            <div id="tab-new" class="tab-content block">
+                <form id="interview-form" class="space-y-5">
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Người hỏi</label>
+                            <input type="text" id="interviewer-name" required placeholder="Nhập tên..."
+                                class="w-full bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/20 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Người đáp</label>
+                            <input type="text" id="interviewee-name" required placeholder="Nhập tên..."
+                                class="w-full bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/20 outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Phân loại</label>
+                            <select id="interview-type"
+                                class="w-full bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/20 outline-none transition-all appearance-none">
+                                <option>Cơ sở vật chất</option>
+                                <option>Học vụ</option>
+                                <option>An ninh</option>
+                                <option>Khác</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Chủ đề</label>
+                            <input type="text" id="interview-topic" required placeholder="Vd: Máy chiếu"
+                                class="w-full bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/20 outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <!-- Ô NỘI DUNG ĐƯỢC MỞ RỘNG -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Nội dung chi tiết</label>
+                        <textarea id="interview-content" required rows="6"
+                            placeholder="Ghi chú chi tiết kết quả phỏng vấn..."
+                            class="w-full bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/20 outline-none transition-all resize-none"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Tọa độ GPS</label>
+                        <div
+                            class="flex rounded-xl overflow-hidden bg-slate-50 border border-transparent focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/20 transition-all">
+                            <input type="text" id="location-input" readonly placeholder="Chưa có dữ liệu..."
+                                class="w-full px-4 py-3 text-sm bg-transparent outline-none text-slate-700">
+                            <button type="button" id="btn-location"
+                                class="bg-blue-100 text-blue-700 px-5 font-bold text-sm hover:bg-blue-200 transition-colors">Lấy
+                                GPS</button>
+                        </div>
+                    </div>
+
+                    <!-- KHU VỰC THÊM ẢNH ĐA NHIỆM MỚI -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5 ml-1">
+                            <label class="block text-xs font-bold text-slate-500">Ảnh hiện trường</label>
+                            <span class="text-[10px] text-slate-400 font-medium">(Đính kèm nhiều ảnh)</span>
+                        </div>
+
+                        <!-- Lưới hiển thị các ảnh đã chọn -->
+                        <div id="photo-gallery" class="grid grid-cols-3 gap-3 mb-3 hidden">
+                            <!-- JS sẽ render các thumbnail ảnh vào đây -->
+                        </div>
+
+                        <div class="flex gap-3">
+                            <!-- Nút Chụp Ảnh (Mở Camera) -->
+                            <label
+                                class="flex-1 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-500 hover:bg-slate-100 hover:border-blue-400 transition-colors cursor-pointer py-4 active:scale-[0.98]">
+                                <input type="file" id="camera-input" accept="image/*" capture="environment"
+                                    class="hidden">
+                                <svg class="w-7 h-7 mb-1 text-slate-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z">
+                                    </path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <span class="text-[11px] font-bold">Chụp Ảnh</span>
+                            </label>
+
+                            <!-- Nút Chọn Ảnh (Mở thư viện, chọn nhiều file) -->
+                            <label
+                                class="flex-1 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-500 hover:bg-slate-100 hover:border-blue-400 transition-colors cursor-pointer py-4 active:scale-[0.98]">
+                                <input type="file" id="gallery-input" accept="image/*" multiple class="hidden">
+                                <svg class="w-7 h-7 mb-1 text-slate-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                <span class="text-[11px] font-bold">Chọn Ảnh / Thêm</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-blue-600 text-white font-bold py-4 px-4 rounded-xl hover:bg-blue-700 shadow-[0_8px_16px_-6px_rgba(37,99,235,0.4)] active:scale-[0.98] transition-transform mt-2">
+                        Lưu Phiên Khảo Sát
+                    </button>
+                </form>
+            </div>
+
+            <!-- TAB 2: LỊCH SỬ -->
+            <div id="tab-history" class="tab-content hidden space-y-4">
+                <div id="session-history"></div>
+            </div>
+
+            <!-- TAB 3: CÀI ĐẶT -->
+            <div id="tab-settings" class="tab-content hidden">
+                <div class="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
+                    <div class="p-5 border-b border-slate-100">
+                        <label class="block text-xs font-bold text-slate-500 mb-2">Google Sheets Webhook URL</label>
+                        <input type="text" id="webhook-url" placeholder="https://script.google.com/..."
+                            class="w-full rounded-xl bg-white border border-slate-200 p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div class="p-5">
+                        <button id="btn-clear-db"
+                            class="w-full text-red-600 bg-red-50 py-3.5 rounded-xl text-sm font-bold active:bg-red-100">
+                            Xóa toàn bộ dữ liệu Offline
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- BOTTOM NAVIGATION BAR -->
+        <nav
+            class="absolute bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200 flex justify-around items-center pb-safe pt-1 z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+            <button onclick="switchTab('new', 'Điều Tra Hiện Trường')" id="nav-new"
+                class="nav-btn flex flex-col items-center p-3 w-20 text-blue-600 transition-colors">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span class="text-[10px] font-bold">Tạo Mới</span>
+            </button>
+            <button onclick="switchTab('history', 'Lịch Sử Khảo Sát')" id="nav-history"
+                class="nav-btn flex flex-col items-center p-3 w-20 text-slate-400 transition-colors">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                </svg>
+                <span class="text-[10px] font-bold">Lịch Sử</span>
+            </button>
+            <button onclick="switchTab('settings', 'Cài Đặt Hệ Thống')" id="nav-settings"
+                class="nav-btn flex flex-col items-center p-3 w-20 text-slate-400 transition-colors">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                    </path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <span class="text-[10px] font-bold">Cài Đặt</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
