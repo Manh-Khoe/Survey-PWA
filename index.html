@@ -3,11 +3,15 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VKU Survey PWA</title>
-    <link rel="manifest" href="manifest.json">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0284c7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>VKU Field Survey - Kiểm Toán Cơ Sở Vật Chất</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" href="./icon-192.png">
+    <!-- Tailwind CSS nạp cục bộ để chạy offline 100% không phụ thuộc internet -->
+    <script src="./tailwind.js"></script>
     <style>
         .no-scrollbar::-webkit-scrollbar {
             display: none;
@@ -19,147 +23,258 @@
         }
 
         .pb-safe {
-            padding-bottom: env(safe-area-inset-bottom);
+            padding-bottom: calc(env(safe-area-inset-bottom, 12px) + 8px);
+        }
+
+        .pt-safe {
+            padding-top: env(safe-area-inset-top, 0px);
+        }
+
+        /* Star Rating Animation */
+        .star-btn {
+            transition: transform 0.15s ease, color 0.15s ease;
+        }
+        .star-btn:hover, .star-btn.active {
+            transform: scale(1.15);
         }
     </style>
 </head>
 
-<body class="bg-gray-900 flex justify-center items-center h-screen">
+<body class="bg-slate-900 flex justify-center items-center min-h-screen text-slate-800 antialiased select-none">
 
-    <div class="w-full max-w-md h-full bg-white flex flex-col relative overflow-hidden shadow-2xl">
+    <div class="w-full max-w-md h-screen max-h-[100dvh] bg-white flex flex-col relative overflow-hidden shadow-2xl">
 
-        <!-- Header -->
-        <header class="bg-white px-5 py-4 flex justify-between items-center z-10 border-b border-slate-100">
-            <h1 id="header-title" class="text-xl font-extrabold text-slate-800 tracking-tight">Điều Tra Hiện Trường</h1>
-            <span id="network-status"
-                class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-100 text-emerald-700">Online</span>
+        <!-- Top Header -->
+        <header class="bg-white px-5 py-3.5 flex justify-between items-center z-10 border-b border-slate-100 pt-safe shadow-sm">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center text-white shadow-sm font-black text-sm">
+                    VKU
+                </div>
+                <div>
+                    <h1 id="header-title" class="text-base font-extrabold text-slate-800 leading-tight">Khảo Sát Hiện Trường</h1>
+                    <p class="text-[10px] text-sky-600 font-bold uppercase tracking-wider">Audit & Inspection</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span id="sync-indicator" class="hidden animate-spin text-sky-600 text-xs">🔄</span>
+                <span id="network-status"
+                    class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-100 text-emerald-700 transition-all">
+                    ONLINE
+                </span>
+            </div>
         </header>
 
-        <!-- NỘI DUNG -->
+        <!-- NỘI DUNG CHÍNH (SCROLLABLE) -->
         <main class="flex-1 overflow-y-auto no-scrollbar pb-24 p-5">
 
-            <!-- TAB 1: PHIÊN MỚI -->
+            <!-- TAB 1: BIỂU MẪU KIỂM TOÁN (SURVEY FORM) -->
             <div id="tab-new" class="tab-content block">
-                <form id="interview-form" class="space-y-5">
+                <!-- Banner Offline Indicator -->
+                <div id="draft-alert" class="hidden mb-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex justify-between items-center">
+                    <span>📝 Đã khôi phục dữ liệu nháp chưa lưu.</span>
+                    <button type="button" id="btn-discard-draft" class="text-amber-700 underline font-semibold ml-2">Hủy</button>
+                </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Người hỏi</label>
-                            <input type="text" id="interviewer-name" required placeholder="Nhập tên..."
-                                class="w-full bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/20 outline-none transition-all">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Người đáp</label>
-                            <input type="text" id="interviewee-name" required placeholder="Nhập tên..."
-                                class="w-full bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/20 outline-none transition-all">
-                        </div>
+                <form id="survey-form" class="space-y-4">
+                    <!-- Thanh tra viên -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Kiểm toán viên / Thanh tra viên <span class="text-red-500">*</span></label>
+                        <input type="text" id="inspector-name" required placeholder="Nhập họ tên sinh viên/kiểm toán viên..."
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-sky-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm focus:ring-4 focus:ring-sky-500/15 outline-none transition-all">
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <!-- Vị trí: Tòa nhà & Tầng -->
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Phân loại</label>
-                            <select id="interview-type"
-                                class="w-full bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/20 outline-none transition-all appearance-none">
-                                <option>Cơ sở vật chất</option>
-                                <option>Học vụ</option>
-                                <option>An ninh</option>
-                                <option>Khác</option>
+                            <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Tòa nhà (Building) <span class="text-red-500">*</span></label>
+                            <select id="building" required
+                                class="w-full bg-slate-50 border border-slate-200 focus:border-sky-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm focus:ring-4 focus:ring-sky-500/15 outline-none transition-all">
+                                <option value="Khu K">Khu K (Khoa CNTT)</option>
+                                <option value="Khu V">Khu V (Khu Đa năng)</option>
+                                <option value="Khu A">Khu A (Nhà Hiệu bộ)</option>
+                                <option value="Khu B">Khu B (Giảng đường)</option>
+                                <option value="KTX">Ký túc xá (KTX)</option>
+                                <option value="Tầng hầm">Tầng hầm / Nhà xe</option>
+                                <option value="Khác">Khu vực khác</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Chủ đề</label>
-                            <input type="text" id="interview-topic" required placeholder="Vd: Máy chiếu"
-                                class="w-full bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/20 outline-none transition-all">
+                            <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Tầng (Floor) <span class="text-red-500">*</span></label>
+                            <select id="floor" required
+                                class="w-full bg-slate-50 border border-slate-200 focus:border-sky-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm focus:ring-4 focus:ring-sky-500/15 outline-none transition-all">
+                                <option value="Tầng hầm">Tầng hầm</option>
+                                <option value="Tầng 1">Tầng 1</option>
+                                <option value="Tầng 2" selected>Tầng 2</option>
+                                <option value="Tầng 3">Tầng 3</option>
+                                <option value="Tầng 4">Tầng 4</option>
+                                <option value="Tầng 5">Tầng 5</option>
+                                <option value="Sân thượng">Sân thượng</option>
+                            </select>
                         </div>
                     </div>
 
-                    <!-- Ô NỘI DUNG ĐƯỢC MỞ RỘNG -->
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Nội dung chi tiết</label>
-                        <textarea id="interview-content" required rows="6"
-                            placeholder="Ghi chú chi tiết kết quả phỏng vấn..."
-                            class="w-full bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-blue-500/20 outline-none transition-all resize-none"></textarea>
+                    <!-- Số phòng & Danh mục -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Số phòng (Room #) <span class="text-red-500">*</span></label>
+                            <input type="text" id="room-number" required placeholder="Vd: K.204, V.102"
+                                class="w-full bg-slate-50 border border-slate-200 focus:border-sky-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm focus:ring-4 focus:ring-sky-500/15 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Danh mục (Category) <span class="text-red-500">*</span></label>
+                            <select id="category" required
+                                class="w-full bg-slate-50 border border-slate-200 focus:border-sky-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm focus:ring-4 focus:ring-sky-500/15 outline-none transition-all">
+                                <option value="Hardware">Hardware (Máy tính, Màn hình)</option>
+                                <option value="Projector">Projector (Máy chiếu, Màn chiếu)</option>
+                                <option value="AC">AC (Điều hòa, Máy lạnh)</option>
+                                <option value="Electrical">Electrical (Cơ sở điện, Ổ cắm, Đèn)</option>
+                                <option value="Furniture">Furniture (Bàn ghế, Bảng viết)</option>
+                            </select>
+                        </div>
                     </div>
 
+                    <!-- Đánh giá tình trạng 1 - 5 Sao -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs font-bold text-slate-600">Đánh giá tình trạng (Condition Rating) <span class="text-red-500">*</span></label>
+                            <span id="rating-text" class="text-xs font-extrabold text-amber-600">5/5 - Hoạt động tốt</span>
+                        </div>
+                        <input type="hidden" id="condition-rating" value="5">
+                        <div class="flex items-center justify-center space-x-3 py-1.5" id="star-container">
+                            <button type="button" data-val="1" class="star-btn text-2xl text-amber-400 focus:outline-none">★</button>
+                            <button type="button" data-val="2" class="star-btn text-2xl text-amber-400 focus:outline-none">★</button>
+                            <button type="button" data-val="3" class="star-btn text-2xl text-amber-400 focus:outline-none">★</button>
+                            <button type="button" data-val="4" class="star-btn text-2xl text-amber-400 focus:outline-none">★</button>
+                            <button type="button" data-val="5" class="star-btn text-2xl text-amber-400 focus:outline-none">★</button>
+                        </div>
+                        <p class="text-[10px] text-center text-slate-400">1 sao: Hỏng nặng/Ngưng hoạt động ➔ 5 sao: Hoạt động hoàn hảo</p>
+                    </div>
+
+                    <!-- Ghi chú lỗi (Defect Notes) -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">Tọa độ GPS</label>
-                        <div
-                            class="flex rounded-xl overflow-hidden bg-slate-50 border border-transparent focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/20 transition-all">
-                            <input type="text" id="location-input" readonly placeholder="Chưa có dữ liệu..."
-                                class="w-full px-4 py-3 text-sm bg-transparent outline-none text-slate-700">
+                        <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Ghi chú lỗi & Hiện trạng (Defect Notes) <span class="text-red-500">*</span></label>
+                        <textarea id="defect-notes" required rows="3"
+                            placeholder="Mô tả chi tiết: Dây nguồn đứt, máy chiếu chớp nháy, điều hòa rò nước, thiếu chuột..."
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-sky-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm focus:ring-4 focus:ring-sky-500/15 outline-none transition-all resize-none"></textarea>
+                    </div>
+
+                    <!-- Tọa độ GPS Hiện Trường -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Tọa độ GPS Hiện Trường</label>
+                        <div class="flex rounded-xl overflow-hidden bg-slate-50 border border-slate-200 focus-within:border-sky-500 focus-within:ring-4 focus-within:ring-sky-500/15 transition-all">
+                            <input type="text" id="location-input" readonly placeholder="Chưa lấy tọa độ GPS..."
+                                class="w-full px-3.5 py-2.5 text-sm bg-transparent outline-none text-slate-700">
                             <button type="button" id="btn-location"
-                                class="bg-blue-100 text-blue-700 px-5 font-bold text-sm hover:bg-blue-200 transition-colors">Lấy
-                                GPS</button>
+                                class="bg-sky-100 text-sky-700 px-4 font-bold text-xs hover:bg-sky-200 transition-colors whitespace-nowrap">
+                                📍 Lấy GPS
+                            </button>
                         </div>
                     </div>
 
-                    <!-- KHU VỰC THÊM ẢNH ĐA NHIỆM MỚI -->
+                    <!-- Ảnh Hiện Trường (Native Camera & Gallery) -->
                     <div>
                         <div class="flex justify-between items-center mb-1.5 ml-1">
-                            <label class="block text-xs font-bold text-slate-500">Ảnh hiện trường</label>
-                            <span class="text-[10px] text-slate-400 font-medium">(Đính kèm nhiều ảnh)</span>
+                            <label class="block text-xs font-bold text-slate-500">Ảnh chụp hiện trường (Camera Photos)</label>
+                            <span id="photo-count" class="text-[10px] text-slate-400 font-medium">0 ảnh</span>
                         </div>
 
-                        <!-- Lưới hiển thị các ảnh đã chọn -->
-                        <div id="photo-gallery" class="grid grid-cols-3 gap-3 mb-3 hidden">
-                            <!-- JS sẽ render các thumbnail ảnh vào đây -->
+                        <!-- Gallery preview -->
+                        <div id="photo-gallery" class="grid grid-cols-3 gap-2.5 mb-3 hidden">
+                            <!-- Render ảnh đã chụp vào đây -->
                         </div>
 
-                        <div class="flex gap-3">
-                            <!-- Nút Chụp Ảnh (Mở Camera) -->
-                            <label
-                                class="flex-1 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-500 hover:bg-slate-100 hover:border-blue-400 transition-colors cursor-pointer py-4 active:scale-[0.98]">
-                                <input type="file" id="camera-input" accept="image/*" capture="environment"
-                                    class="hidden">
-                                <svg class="w-7 h-7 mb-1 text-slate-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        <div class="grid grid-cols-2 gap-3">
+                            <!-- Nút Chụp Ảnh (Gọi @capacitor/camera khi chạy Native, hoặc web camera) -->
+                            <button type="button" id="btn-camera"
+                                class="bg-sky-50 border-2 border-dashed border-sky-300 rounded-xl flex flex-col items-center justify-center text-sky-700 hover:bg-sky-100 transition-colors py-3 active:scale-[0.98]">
+                                <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
+                                <svg class="w-6 h-6 mb-1 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                                         d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z">
                                     </path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                                         d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 </svg>
-                                <span class="text-[11px] font-bold">Chụp Ảnh</span>
-                            </label>
+                                <span class="text-xs font-bold">Chụp Ảnh (Camera)</span>
+                            </button>
 
-                            <!-- Nút Chọn Ảnh (Mở thư viện, chọn nhiều file) -->
+                            <!-- Nút Chọn Từ Bộ Nhớ / Thư Viện -->
                             <label
-                                class="flex-1 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-500 hover:bg-slate-100 hover:border-blue-400 transition-colors cursor-pointer py-4 active:scale-[0.98]">
+                                class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors py-3 active:scale-[0.98] cursor-pointer">
                                 <input type="file" id="gallery-input" accept="image/*" multiple class="hidden">
-                                <svg class="w-7 h-7 mb-1 text-slate-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                        d="M12 4v16m8-8H4"></path>
+                                <svg class="w-6 h-6 mb-1 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                    </path>
                                 </svg>
-                                <span class="text-[11px] font-bold">Chọn Ảnh / Thêm</span>
+                                <span class="text-xs font-bold">Thư Viện Ảnh</span>
                             </label>
                         </div>
                     </div>
 
-                    <button type="submit"
-                        class="w-full bg-blue-600 text-white font-bold py-4 px-4 rounded-xl hover:bg-blue-700 shadow-[0_8px_16px_-6px_rgba(37,99,235,0.4)] active:scale-[0.98] transition-transform mt-2">
-                        Lưu Phiên Khảo Sát
+                    <!-- Nút Submit -->
+                    <button type="submit" id="btn-submit"
+                        class="w-full bg-sky-600 hover:bg-sky-700 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-[0_8px_16px_-6px_rgba(2,132,199,0.5)] active:scale-[0.98] transition-all flex items-center justify-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                        </svg>
+                        <span>Lưu Khảo Sát Hiện Trường</span>
                     </button>
                 </form>
             </div>
 
-            <!-- TAB 2: LỊCH SỬ -->
-            <div id="tab-history" class="tab-content hidden space-y-4">
-                <div id="session-history"></div>
+            <!-- TAB 2: LỊCH SỬ KHẢO SÁT (HISTORY & QUEUE) -->
+            <div id="tab-history" class="tab-content hidden space-y-3">
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <h2 class="font-bold text-sm text-slate-800">Danh Sách Phiếu Khảo Sát</h2>
+                        <p class="text-[11px] text-slate-500" id="history-summary">Đang tải...</p>
+                    </div>
+                    <button type="button" id="btn-manual-sync"
+                        class="bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1 active:scale-95 transition-all">
+                        <span>🔄 Đồng Bộ Ngay</span>
+                    </button>
+                </div>
+
+                <!-- Bộ lọc trạng thái -->
+                <div class="flex space-x-2 text-xs">
+                    <button type="button" class="filter-btn px-3 py-1 rounded-lg font-bold bg-sky-600 text-white" data-filter="all">Tất cả</button>
+                    <button type="button" class="filter-btn px-3 py-1 rounded-lg font-bold bg-slate-100 text-slate-600" data-filter="PENDING_SYNC">Chờ gửi ⏳</button>
+                    <button type="button" class="filter-btn px-3 py-1 rounded-lg font-bold bg-slate-100 text-slate-600" data-filter="SYNCED">Đã đồng bộ ✓</button>
+                </div>
+
+                <!-- Danh sách item -->
+                <div id="session-history" class="space-y-3 pt-2"></div>
             </div>
 
-            <!-- TAB 3: CÀI ĐẶT -->
-            <div id="tab-settings" class="tab-content hidden">
-                <div class="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                    <div class="p-5 border-b border-slate-100">
-                        <label class="block text-xs font-bold text-slate-500 mb-2">Google Sheets Webhook URL</label>
-                        <input type="text" id="webhook-url" placeholder="https://script.google.com/..."
-                            class="w-full rounded-xl bg-white border border-slate-200 p-3 text-sm outline-none focus:border-blue-500">
+            <!-- TAB 3: CÀI ĐẶT & HỆ THỐNG -->
+            <div id="tab-settings" class="tab-content hidden space-y-4">
+                <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="p-4 border-b border-slate-200">
+                        <label class="block text-xs font-bold text-slate-600 mb-1.5">Google Sheets Webhook URL (Máy Chủ Nhận)</label>
+                        <input type="text" id="webhook-url" placeholder="https://script.google.com/macros/s/.../exec"
+                            class="w-full rounded-xl bg-white border border-slate-200 p-2.5 text-xs outline-none focus:border-sky-500">
+                        <p class="text-[10px] text-slate-400 mt-1">Hệ thống sẽ POST dữ liệu JSON tới địa chỉ này khi thiết bị có kết nối mạng.</p>
                     </div>
-                    <div class="p-5">
-                        <button id="btn-clear-db"
-                            class="w-full text-red-600 bg-red-50 py-3.5 rounded-xl text-sm font-bold active:bg-red-100">
-                            Xóa toàn bộ dữ liệu Offline
+
+                    <div class="p-4 border-b border-slate-200 space-y-2">
+                        <h4 class="text-xs font-bold text-slate-700">Thông Tin Môi Trường</h4>
+                        <div class="text-[11px] text-slate-600 space-y-1">
+                            <p>📱 <b>Môi trường thực thi:</b> <span id="env-platform" class="text-sky-700 font-bold">Đang kiểm tra...</span></p>
+                            <p>🌐 <b>Mạng kết nối:</b> <span id="env-network" class="font-bold">Đang kiểm tra...</span></p>
+                            <p>💾 <b>Cơ sở dữ liệu:</b> IndexedDB (VKUSurveyDB)</p>
+                            <p>⚡ <b>PWA Cache-First:</b> Sẵn sàng cho chế độ Offline</p>
+                        </div>
+                    </div>
+
+                    <div class="p-4 space-y-2.5">
+                        <button type="button" id="btn-export-json"
+                            class="w-full text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 py-2.5 rounded-xl text-xs font-bold active:scale-[0.99] transition-all">
+                            📥 Xuất Toàn Bộ Dữ Liệu (JSON)
+                        </button>
+                        <button type="button" id="btn-clear-db"
+                            class="w-full text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 py-2.5 rounded-xl text-xs font-bold active:scale-[0.99] transition-all">
+                            🗑️ Xóa Toàn Bộ Dữ Liệu Cục Bộ (IndexedDB)
                         </button>
                     </div>
                 </div>
@@ -167,44 +282,47 @@
 
         </main>
 
-        <!-- BOTTOM NAVIGATION BAR -->
-        <!-- MODAL CHI TIẾT PHIÊN (Ẩn mặc định) -->
+        <!-- MODAL CHI TIẾT PHIẾU KHẢO SÁT -->
         <div id="detail-modal"
-            class="absolute inset-0 bg-black/80 z-[100] hidden flex-col items-center justify-center p-4 opacity-0 transition-opacity duration-300">
-            <div class="bg-white rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
-                <!-- Header của Modal -->
-                <div class="p-4 border-b flex justify-between items-center bg-slate-50">
-                    <h3 class="font-bold text-lg text-blue-700">Chi Tiết Khảo Sát</h3>
-                    <button onclick="closeModal()"
-                        class="text-slate-500 hover:text-red-500 bg-slate-200 w-8 h-8 rounded-full flex items-center justify-center font-bold">✕</button>
+            class="absolute inset-0 bg-black/70 z-[100] hidden flex-col items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+            <div class="bg-white rounded-2xl w-full max-w-md max-h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <h3 class="font-extrabold text-base text-sky-700 flex items-center space-x-1.5">
+                        <span>Chi Tiết Khảo Sát</span>
+                    </h3>
+                    <button type="button" id="btn-close-modal"
+                        class="text-slate-400 hover:text-red-500 bg-slate-200/80 w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm">✕</button>
                 </div>
-                <!-- Nội dung chi tiết -->
-                <div id="modal-content" class="p-5 overflow-y-auto flex-1 space-y-3 text-sm text-slate-700">
-                    <!-- JS sẽ nhồi dữ liệu và ảnh phóng to vào đây -->
+                <div id="modal-content" class="p-5 overflow-y-auto flex-1 space-y-3 text-sm text-slate-700 no-scrollbar">
+                    <!-- Chi tiết nạp bằng JS -->
                 </div>
             </div>
         </div>
-        
+
+        <!-- BOTTOM NAVIGATION BAR -->
         <nav
-            class="absolute bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200 flex justify-around items-center pb-safe pt-1 z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-            <button onclick="switchTab('new', 'Điều Tra Hiện Trường')" id="nav-new"
-                class="nav-btn flex flex-col items-center p-3 w-20 text-blue-600 transition-colors">
-                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            class="absolute bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 flex justify-around items-center pb-safe pt-1.5 z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+            <button type="button" id="nav-new"
+                class="nav-btn flex flex-col items-center p-2 w-20 text-sky-600 transition-colors">
+                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
                 </svg>
-                <span class="text-[10px] font-bold">Tạo Mới</span>
+                <span class="text-[10px] font-bold">Khảo Sát</span>
             </button>
-            <button onclick="switchTab('history', 'Lịch Sử Khảo Sát')" id="nav-history"
-                class="nav-btn flex flex-col items-center p-3 w-20 text-slate-400 transition-colors">
-                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
-                </svg>
+            <button type="button" id="nav-history"
+                class="nav-btn flex flex-col items-center p-2 w-20 text-slate-400 transition-colors">
+                <div class="relative">
+                    <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <span id="badge-pending" class="hidden absolute -top-1 -right-2 bg-amber-500 text-white rounded-full text-[9px] w-4 h-4 flex items-center justify-center font-bold">0</span>
+                </div>
                 <span class="text-[10px] font-bold">Lịch Sử</span>
             </button>
-            <button onclick="switchTab('settings', 'Cài Đặt Hệ Thống')" id="nav-settings"
-                class="nav-btn flex flex-col items-center p-3 w-20 text-slate-400 transition-colors">
-                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button type="button" id="nav-settings"
+                class="nav-btn flex flex-col items-center p-2 w-20 text-slate-400 transition-colors">
+                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
                     </path>
@@ -217,7 +335,8 @@
 
     </div>
 
-    <script src="app.js"></script>
+    <!-- Script chính dạng ES Module bundle bởi Vite -->
+    <script type="module" src="./app.js"></script>
 </body>
 
 </html>

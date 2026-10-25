@@ -1,0 +1,33 @@
+{
+  "name": "vku-field-survey",
+  "version": "1.0.0",
+  "description": "VKU Field Survey - PWA & Capacitor Native Android App",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "cap:sync": "npm run build && npx cap sync android",
+    "cap:open": "npx cap open android",
+    "build:apk": "powershell -ExecutionPolicy Bypass -File ./build-apk.ps1"
+  },
+  "keywords": [
+    "vku",
+    "pwa",
+    "capacitor",
+    "offline-first"
+  ],
+  "author": "VKU Auditor",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/camera": "^8.2.6",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/network": "^8.0.1",
+    "idb": "^8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "vite": "^8.3.5"
+  }
+}

@@ -1,15 +1,23 @@
 {
-  "name": "App Điều Tra Hiện Trường",
-  "short_name": "Điều Tra",
+  "name": "VKU Field Survey",
+  "short_name": "VKU Survey",
+  "description": "Ứng dụng kiểm toán thiết bị lớp học và cơ sở vật chất VKU Offline",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "theme_color": "#0284c7",
   "icons": [
     {
-      "src": "https://www.iconpacks.net/icons/2/free-search-icon-2907-thumb.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
