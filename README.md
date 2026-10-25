@@ -96,3 +96,4 @@ Nhấn nút **Run** (mũi tên xanh) để cài lên máy ảo / thiết bị th
 ├── package.json            # Scripts & danh sách dependencies
 └── README.md               # Tài liệu hướng dẫn đồ án
 ```
+
